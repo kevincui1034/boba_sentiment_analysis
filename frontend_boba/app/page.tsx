@@ -23,6 +23,10 @@ export default function Home() {
   const [results, setResults] = React.useState<SearchResult[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  /** Query we last finished a search for; avoids "no results" while only typing. */
+  const [lastSearchedPhrase, setLastSearchedPhrase] = React.useState<
+    string | null
+  >(null)
 
   async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -42,10 +46,12 @@ export default function Home() {
       }
       const payload = await response.json()
       setResults(payload.results ?? [])
+      setLastSearchedPhrase(trimmedPhrase)
     } catch (err) {
       console.error(err)
       setError("Unable to search right now. Check backend connection.")
       setResults([])
+      setLastSearchedPhrase(null)
     } finally {
       setLoading(false)
     }
@@ -87,8 +93,14 @@ export default function Home() {
               </p>
             </div>
           ))}
-          {!loading && results.length === 0 && phrase.trim() ? (
-            <p className="text-sm text-muted-foreground">No matching results found.</p>
+          {!loading &&
+          results.length === 0 &&
+          !error &&
+          lastSearchedPhrase !== null &&
+          lastSearchedPhrase === phrase.trim() ? (
+            <p className="text-sm text-muted-foreground">
+              No matching results found.
+            </p>
           ) : null}
         </div>
       </div>
