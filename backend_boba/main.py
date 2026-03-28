@@ -7,7 +7,11 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://bobasentimentanalysis.vercel.app/"],  # Next.js dev URL
+    # Origin header has no trailing slash; must match exactly.
+    allow_origins=[
+        "http://localhost:3000",
+        "https://bobasentimentanalysis.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
