@@ -54,7 +54,7 @@ export default function Home() {
   return (
     <section id="home" className="min-h-screen grid place-items-center">
       <div className="w-full max-w-2xl space-y-4 text-center px-4">
-        <h1 className="text-5xl font-semibold pb-10">Your Next Boba Stop</h1>
+        <h1 className="text-5xl font-semibold pb-10">Find Your Next Boba Stop!</h1>
         <form onSubmit={handleSearch}>
           <InputGroup>
             <InputGroupInput
