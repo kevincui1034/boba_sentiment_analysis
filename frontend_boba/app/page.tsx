@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { FallingBobaBackground } from "@/components/falling-boba-background"
 import {
   InputGroup,
   InputGroupAddon,
@@ -58,8 +59,12 @@ export default function Home() {
   }
 
   return (
-    <section id="home" className="min-h-screen grid place-items-center">
-      <div className="w-full max-w-2xl space-y-4 text-center px-4">
+    <section
+      id="home"
+      className="relative min-h-screen grid place-items-center overflow-hidden"
+    >
+      <FallingBobaBackground />
+      <div className="relative z-10 w-full max-w-2xl space-y-4 text-center px-4">
         <h1 className="text-5xl font-semibold pb-10">Find Your Next Boba Stop!</h1>
         <form onSubmit={handleSearch}>
           <InputGroup>

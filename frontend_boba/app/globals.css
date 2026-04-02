@@ -176,3 +176,18 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+
+/* Falling boba background (see components/falling-boba-background.tsx)
+   Avoid CSS variables inside @keyframes — many browsers won't animate reliably. */
+@keyframes falling-boba-fall {
+  0% {
+    transform: translate3d(0, -20vh, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate3d(0, 120vh, 0) rotate(360deg);
+  }
+}
+
+.falling-boba {
+  will-change: transform;
+}
