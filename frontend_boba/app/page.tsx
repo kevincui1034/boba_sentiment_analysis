@@ -29,7 +29,7 @@ type SearchResult = {
   matching_review_count: number
 }
 
-export default function Home() {
+function HomeContent() {
   const PAGE_SIZE = 15
   const searchParams = useSearchParams()
   const [phrase, setPhrase] = React.useState("")
@@ -253,5 +253,22 @@ export default function Home() {
         </div>
       </div>
     </section>
+  )
+}
+
+export default function Home() {
+  return (
+    <React.Suspense
+      fallback={
+        <section className="relative min-h-screen grid place-items-center py-10 sm:py-14">
+          <FallingBobaBackground />
+          <div className="relative z-10 text-center text-sm text-muted-foreground">
+            Loading search...
+          </div>
+        </section>
+      }
+    >
+      <HomeContent />
+    </React.Suspense>
   )
 }
