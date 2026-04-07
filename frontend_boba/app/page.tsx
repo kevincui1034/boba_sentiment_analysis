@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 
 import { FallingBobaBackground } from "@/components/falling-boba-background"
 import {
@@ -141,15 +142,27 @@ export default function Home() {
         <div className="text-left space-y-3 pt-4">
           {results.map((item, index) => (
             <div key={item.business_id} className="rounded border p-3">
-              <p className="font-semibold">
-                #{(currentPage - 1) * PAGE_SIZE + index + 1}{" "}
-                {item.name ?? "Unknown shop"}
-              </p>
+              <Link
+                className="block hover:opacity-90"
+                href={{
+                  pathname: `/restaurant/${item.business_id}`,
+                  query: {
+                    q: phrase.trim(),
+                    city: cityFilter.trim(),
+                    county: countyFilter.trim(),
+                  },
+                }}
+              >
+                <p className="font-semibold underline-offset-4 hover:underline">
+                  #{(currentPage - 1) * PAGE_SIZE + index + 1}{" "}
+                  {item.name ?? "Unknown shop"}
+                </p>
+              </Link>
               <p className="text-sm text-muted-foreground">
                 {item.city ?? "Unknown city"}, {item.state ?? "Unknown state"}
               </p>
               <p className="text-sm">
-                Avg sentiment: {item.avg_sentiment_polarity} · Matching reviews:{" "}
+                Avg sentiment: {item.avg_sentiment_polarity.toFixed(2)} · Matching reviews:{" "}
                 {item.matching_review_count}
               </p>
             </div>
