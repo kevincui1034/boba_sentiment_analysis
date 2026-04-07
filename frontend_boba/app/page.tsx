@@ -9,6 +9,14 @@ import {
   InputGroupButton,
   InputGroupInput,
 } from "@/components/ui/input-group"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 type SearchResult = {
   business_id: string
@@ -20,8 +28,14 @@ type SearchResult = {
 }
 
 export default function Home() {
+  const PAGE_SIZE = 15
   const [phrase, setPhrase] = React.useState("")
+  const [cityFilter, setCityFilter] = React.useState("")
+  const [countyFilter, setCountyFilter] = React.useState("")
   const [results, setResults] = React.useState<SearchResult[]>([])
+  const [currentPage, setCurrentPage] = React.useState(1)
+  const [totalPages, setTotalPages] = React.useState(1)
+  const [totalResults, setTotalResults] = React.useState(0)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   /** Query we last finished a search for; avoids "no results" while only typing. */
@@ -29,8 +43,7 @@ export default function Home() {
     string | null
   >(null)
 
-  async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function fetchSearch(targetPage: number) {
     const trimmedPhrase = phrase.trim()
     if (!trimmedPhrase) return
 
@@ -38,8 +51,16 @@ export default function Home() {
     setError(null)
     try {
       const apiBase = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"
+      const params = new URLSearchParams({
+        q: trimmedPhrase,
+        min_reviews: "3",
+        page: String(targetPage),
+        page_size: String(PAGE_SIZE),
+      })
+      if (cityFilter.trim()) params.set("city", cityFilter.trim())
+      if (countyFilter.trim()) params.set("county", countyFilter.trim())
       const response = await fetch(
-        `${apiBase}/api/search?q=${encodeURIComponent(trimmedPhrase)}&min_reviews=3&top=15`,
+        `${apiBase}/api/search?${params.toString()}`,
         { method: "GET" }
       )
       if (!response.ok) {
@@ -47,15 +68,33 @@ export default function Home() {
       }
       const payload = await response.json()
       setResults(payload.results ?? [])
+      setCurrentPage(payload.page ?? targetPage)
+      setTotalPages(payload.total_pages ?? 1)
+      setTotalResults(payload.total_results ?? 0)
       setLastSearchedPhrase(trimmedPhrase)
     } catch (err) {
       console.error(err)
       setError("Unable to search right now. Check backend connection.")
       setResults([])
+      setCurrentPage(1)
+      setTotalPages(1)
+      setTotalResults(0)
       setLastSearchedPhrase(null)
     } finally {
       setLoading(false)
     }
+  }
+
+  async function handleSearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    await fetchSearch(1)
+  }
+
+  function pageNumbers(total: number, current: number): number[] {
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
+    if (current <= 3) return [1, 2, 3, 4, 5]
+    if (current >= total - 2) return [total - 4, total - 3, total - 2, total - 1, total]
+    return [current - 2, current - 1, current, current + 1, current + 2]
   }
 
   return (
@@ -79,6 +118,22 @@ export default function Home() {
               </InputGroupButton>
             </InputGroupAddon>
           </InputGroup>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <InputGroup>
+              <InputGroupInput
+                placeholder="City (Santa Barabara, etc.) (optional)"
+                value={cityFilter}
+                onChange={(event) => setCityFilter(event.target.value)}
+              />
+            </InputGroup>
+            <InputGroup>
+              <InputGroupInput
+                placeholder="State (CA, NY, etc.) (optional)"
+                value={countyFilter}
+                onChange={(event) => setCountyFilter(event.target.value)}
+              />
+            </InputGroup>
+          </div>
         </form>
 
         {error ? <p className="text-red-600">{error}</p> : null}
@@ -87,7 +142,8 @@ export default function Home() {
           {results.map((item, index) => (
             <div key={item.business_id} className="rounded border p-3">
               <p className="font-semibold">
-                #{index + 1} {item.name ?? "Unknown shop"}
+                #{(currentPage - 1) * PAGE_SIZE + index + 1}{" "}
+                {item.name ?? "Unknown shop"}
               </p>
               <p className="text-sm text-muted-foreground">
                 {item.city ?? "Unknown city"}, {item.state ?? "Unknown state"}
@@ -106,6 +162,45 @@ export default function Home() {
             <p className="text-sm text-muted-foreground">
               No matching results found.
             </p>
+          ) : null}
+
+          {!loading && !error && totalResults > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Showing page {currentPage} of {totalPages} ({totalResults} total results)
+            </p>
+          ) : null}
+
+          {!loading && !error && totalPages > 1 ? (
+            <Pagination className="pt-2">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    disabled={currentPage <= 1}
+                    onClick={() => {
+                      if (currentPage > 1) fetchSearch(currentPage - 1)
+                    }}
+                  />
+                </PaginationItem>
+                {pageNumbers(totalPages, currentPage).map((pageNum) => (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      isActive={pageNum === currentPage}
+                      onClick={() => fetchSearch(pageNum)}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    disabled={currentPage >= totalPages}
+                    onClick={() => {
+                      if (currentPage < totalPages) fetchSearch(currentPage + 1)
+                    }}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
           ) : null}
         </div>
       </div>
