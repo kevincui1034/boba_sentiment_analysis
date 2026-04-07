@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
 
 type PageProps = {
   params: Promise<{ businessId: string }>
@@ -24,6 +25,21 @@ type RestaurantResponse = {
   total_results: number
   total_pages: number
   reviews: ReviewRow[]
+}
+
+function highlightPhrase(text: string, phrase: string) {
+  const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const regex = new RegExp(`(${escaped})`, "gi")
+  const chunks = text.split(regex)
+  return chunks.map((chunk, index) => {
+    const isMatch = chunk.toLowerCase() === phrase.toLowerCase()
+    if (!isMatch) return <span key={index}>{chunk}</span>
+    return (
+      <mark key={index} className="rounded bg-yellow-200 px-0.5 text-black">
+        {chunk}
+      </mark>
+    )
+  })
 }
 
 export default async function RestaurantPage({ params, searchParams }: PageProps) {
@@ -69,32 +85,64 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
   }
 
   const data = (await response.json()) as RestaurantResponse
+  const placeQuery = [data.name, data.city, data.state].filter(Boolean).join(" ")
+  const yelpUrl = `https://www.yelp.com/search?find_desc=${encodeURIComponent(placeQuery)}`
+  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeQuery)}`
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-3xl space-y-4 px-6 py-10">
-      <Link href="/" className="text-sm underline">
-        ← Back to search
+      <Link
+        href={{
+          pathname: "/",
+          query: {
+            q: sp.q ?? "",
+            city: sp.city ?? "",
+            county: sp.county ?? "",
+            page: sp.page ?? "1",
+          },
+        }}
+        className="inline-flex"
+      >
+        <Button variant="outline" size="sm">← Back to search</Button>
       </Link>
       <h1 className="text-3xl font-semibold">{data.name ?? "Unknown shop"}</h1>
       <p className="text-sm text-muted-foreground">
         {data.city ?? "Unknown city"}, {data.state ?? "Unknown state"}
       </p>
-      <p className="text-sm">
-        Phrase: <span className="font-medium">{data.query}</span> · Avg sentiment:{" "}
-        <span className="font-medium">{data.avg_sentiment_polarity.toFixed(3)}</span> · Matching reviews:{" "}
-        <span className="font-medium">{data.matching_review_count}</span>
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm">
+          Phrase: <span className="font-medium">{data.query}</span> · Avg sentiment:{" "}
+          <span className="font-medium">{data.avg_sentiment_polarity.toFixed(3)}</span> · Matching reviews:{" "}
+          <span className="font-medium">{data.matching_review_count}</span>
+        </p>
+        <div className="flex flex-wrap justify-end gap-3 text-sm">
+          <Button asChild variant="secondary" size="sm">
+            <a href={yelpUrl} target="_blank" rel="noopener noreferrer">
+              View on Yelp
+            </a>
+          </Button>
+          <Button asChild variant="secondary" size="sm">
+            <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
+              Open in Google Maps
+            </a>
+          </Button>
+        </div>
+      </div>
 
       <div className="space-y-3 pt-2">
         {data.reviews.map((review, idx) => (
           <article key={`${data.page}-${idx}`} className="rounded border p-3">
-            <p className="text-sm">{review.text ?? "No review text"}</p>
+            <p className="text-sm">
+              {review.text ? highlightPhrase(review.text, queryPhrase) : "No review text"}
+            </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Sentiment:{" "}
               {review.sentiment_polarity !== null
-                ? review.sentiment_polarity.toFixed(2)
+                ? review.sentiment_polarity.toFixed(4)
                 : "N/A"}
-              {review.review_date ? ` · ${review.review_date}` : ""}
+              {review.review_date
+                ? ` · ${review.review_date.replace("T", " ")}`
+                : ""}
             </p>
           </article>
         ))}
@@ -133,6 +181,10 @@ export default async function RestaurantPage({ params, searchParams }: PageProps
           )}
         </div>
       ) : null}
+
+      <p className="pt-6 text-xs text-muted-foreground">
+        Disclaimer: Rankings and review snippets shown here are derived from the Yelp academic dataset.
+      </p>
     </main>
   )
 }

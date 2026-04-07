@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { useSearchParams } from "next/navigation"
 
 import { FallingBobaBackground } from "@/components/falling-boba-background"
 import {
@@ -30,6 +31,7 @@ type SearchResult = {
 
 export default function Home() {
   const PAGE_SIZE = 15
+  const searchParams = useSearchParams()
   const [phrase, setPhrase] = React.useState("")
   const [cityFilter, setCityFilter] = React.useState("")
   const [countyFilter, setCountyFilter] = React.useState("")
@@ -43,9 +45,17 @@ export default function Home() {
   const [lastSearchedPhrase, setLastSearchedPhrase] = React.useState<
     string | null
   >(null)
+  const initializedFromUrlRef = React.useRef(false)
 
-  async function fetchSearch(targetPage: number) {
-    const trimmedPhrase = phrase.trim()
+  async function fetchSearch(
+    targetPage: number,
+    overrides?: { phrase?: string; city?: string; county?: string }
+  ) {
+    const effectivePhrase = overrides?.phrase ?? phrase
+    const effectiveCity = overrides?.city ?? cityFilter
+    const effectiveCounty = overrides?.county ?? countyFilter
+
+    const trimmedPhrase = effectivePhrase.trim()
     if (!trimmedPhrase) return
 
     setLoading(true)
@@ -58,8 +68,8 @@ export default function Home() {
         page: String(targetPage),
         page_size: String(PAGE_SIZE),
       })
-      if (cityFilter.trim()) params.set("city", cityFilter.trim())
-      if (countyFilter.trim()) params.set("county", countyFilter.trim())
+      if (effectiveCity.trim()) params.set("city", effectiveCity.trim())
+      if (effectiveCounty.trim()) params.set("county", effectiveCounty.trim())
       const response = await fetch(
         `${apiBase}/api/search?${params.toString()}`,
         { method: "GET" }
@@ -91,6 +101,26 @@ export default function Home() {
     await fetchSearch(1)
   }
 
+  React.useEffect(() => {
+    if (initializedFromUrlRef.current) return
+    const q = (searchParams.get("q") ?? "").trim()
+    if (!q) {
+      initializedFromUrlRef.current = true
+      return
+    }
+    const city = (searchParams.get("city") ?? "").trim()
+    const county = (searchParams.get("county") ?? "").trim()
+    const pageFromUrl = Number(searchParams.get("page") ?? "1")
+
+    setPhrase(q)
+    setCityFilter(city)
+    setCountyFilter(county)
+
+    initializedFromUrlRef.current = true
+    const targetPage = Number.isFinite(pageFromUrl) && pageFromUrl > 0 ? pageFromUrl : 1
+    void fetchSearch(targetPage, { phrase: q, city, county })
+  }, [searchParams])
+
   function pageNumbers(total: number, current: number): number[] {
     if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
     if (current <= 3) return [1, 2, 3, 4, 5]
@@ -101,10 +131,10 @@ export default function Home() {
   return (
     <section
       id="home"
-      className="relative min-h-screen grid place-items-center overflow-hidden"
+      className="relative min-h-screen grid place-items-center overflow-hidden py-10 sm:py-14"
     >
       <FallingBobaBackground />
-      <div className="relative z-10 w-full max-w-2xl space-y-4 text-center px-4">
+      <div className="relative z-10 w-full max-w-2xl space-y-4 text-center px-4 pb-10 sm:pb-14">
         <h1 className="text-5xl font-semibold pb-10">Find Your Next Boba Stop!</h1>
         <form onSubmit={handleSearch}>
           <InputGroup>
@@ -150,6 +180,7 @@ export default function Home() {
                     q: phrase.trim(),
                     city: cityFilter.trim(),
                     county: countyFilter.trim(),
+                    page: String(currentPage),
                   },
                 }}
               >
@@ -162,7 +193,7 @@ export default function Home() {
                 {item.city ?? "Unknown city"}, {item.state ?? "Unknown state"}
               </p>
               <p className="text-sm">
-                Avg sentiment: {item.avg_sentiment_polarity.toFixed(2)} · Matching reviews:{" "}
+                Avg sentiment: {item.avg_sentiment_polarity.toFixed(3)} · Matching reviews:{" "}
                 {item.matching_review_count}
               </p>
             </div>
@@ -215,6 +246,10 @@ export default function Home() {
               </PaginationContent>
             </Pagination>
           ) : null}
+
+          <p className="pt-4 text-xs text-muted-foreground">
+            Disclaimer: Rankings and review snippets shown here are derived from the Yelp academic dataset.
+          </p>
         </div>
       </div>
     </section>
